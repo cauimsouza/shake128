@@ -6,7 +6,7 @@ class Sponge {
 		/* permutation function */
 		std::vector<bool> (*const f)(const std::vector<bool>&);
 		/* padding rule */
-		std::vector<bool> (*const pad)(const std::vector<bool>&);
+		std::vector<bool> (*const pad)(const std::vector<bool>&, int);
 		/* width of the permutation */
 		const int b;
 		/* rate */
@@ -15,7 +15,7 @@ class Sponge {
 		std::vector<bool> xof(const std::vector<bool>& m, int len) const;
 
 		Sponge(std::vector<bool> (*f)(const std::vector<bool>&),
-			   std::vector<bool> (*pad)(const std::vector<bool>&),
+			   std::vector<bool> (*pad)(const std::vector<bool>&, int),
 			   int b, int r);
 };
 
