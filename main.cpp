@@ -40,7 +40,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	int nbits = 8 * atoi(argv[1]);
-	int capacity = 2 * nbits;
 
 	auto message = get_input();
 	
