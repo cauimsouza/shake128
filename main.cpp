@@ -7,7 +7,7 @@
 
 using namespace std;
 
-vector<bool> get_input() {
+static vector<bool> get_input() {
 	vector<bool> vet;
 	unsigned char c;
 	while (!feof(stdin)) {
@@ -19,7 +19,7 @@ vector<bool> get_input() {
 	return vet;
 }
 
-void print_binary_as_ascii(vector<bool>& output) {
+static void print_binary_as_ascii(vector<bool>& output) {
 	for (int i = 0; i < output.size(); i += 8) {
 		unsigned char c = 0;
 		for (int j = 7; j >= 0; j--)
