@@ -7,8 +7,6 @@
 
 using namespace std;
 
-#define RATE 1000
-
 vector<bool> get_input() {
 	vector<bool> vet;
 	unsigned char c;
@@ -39,10 +37,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	int nbits = 8 * atoi(argv[1]);
+	int capacity = 2 * nbits;
 
 	freopen(nullptr, "rb", stdin);
 
-	Shake128 shake(RATE);
+	Shake128 shake();
 
 	auto message = get_input();
 	auto digest = shake.xof(message, nbits);
