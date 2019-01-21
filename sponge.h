@@ -10,7 +10,7 @@ class Sponge {
 		/* width of the permutation */
 		const int b;
 		/* rate */
-		const int r;
+		int r;
 	public:
 		std::vector<bool> xof(const std::vector<bool>& m, int len) const;
 
