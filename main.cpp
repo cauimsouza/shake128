@@ -8,7 +8,10 @@
 using namespace std;
 
 static vector<bool> get_input() {
+	freopen(nullptr, "rb", stdin);
+
 	vector<bool> vet;
+
 	unsigned char c;
 	while (!feof(stdin)) {
 		c = getchar();
@@ -39,11 +42,9 @@ int main(int argc, char *argv[]) {
 	int nbits = 8 * atoi(argv[1]);
 	int capacity = 2 * nbits;
 
-	freopen(nullptr, "rb", stdin);
-
-	Shake128 shake;
-
 	auto message = get_input();
+	
+	Shake128 shake;
 	auto digest = shake.xof(message, nbits);
 
 	assert(digest.size() == nbits);
