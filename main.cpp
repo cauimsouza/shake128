@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
 	freopen(nullptr, "rb", stdin);
 
-	Shake128 shake();
+	Shake128 shake;
 
 	auto message = get_input();
 	auto digest = shake.xof(message, nbits);
