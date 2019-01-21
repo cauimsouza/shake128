@@ -6,7 +6,7 @@
 
 class Shake128 : public Sponge {
 	public:
-		Shake128(int r);
+		Shake128();
 
 		std::vector<bool> xof(const std::vector<bool>& m, int len) const;
 };

@@ -138,9 +138,10 @@ static void multi_rate_pad(vector<bool>& s, int r) {
 	assert(s.size() == j + 2 + m);
 }
 
-Shake128::Shake128(int r) : Sponge(keccak_f, multi_rate_pad, B, r) {}
+Shake128::Shake128() : Sponge(keccak_f, multi_rate_pad, B, 0) {}
 
 vector<bool> Shake128::xof(const vector<bool>& m, int len) const {
+	this->r = B - 2 * len;
 	vector<bool> suffix = {1, 1, 1, 1};
 	suffix.insert(suffix.begin(), m.begin(), m.end());
 	return Sponge::xof(suffix, len);
