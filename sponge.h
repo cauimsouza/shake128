@@ -9,7 +9,6 @@ class Sponge {
 		void (*const pad)(std::vector<bool>&, int);
 		/* width of the permutation */
 		const int b;
-	protected:
 		/* rate */
 		int r;
 	public:

@@ -1,6 +1,8 @@
 #include <cstdlib>
 #include <cstdio>
+#include <cstdint>
 #include <cassert>
+#include <unistd.h>
 #include <iostream>
 #include <string>
 #include "shake.h"
@@ -13,8 +15,7 @@ static vector<bool> get_input() {
 	vector<bool> vet;
 
 	unsigned char c;
-	while (!feof(stdin)) {
-		c = getchar();
+	while (read(STDIN_FILENO, &c, 1) > 0) {
 		for (int i = 7; i >= 0; i--)
 			vet.push_back(c & (1 << i));
 	}
@@ -24,10 +25,10 @@ static vector<bool> get_input() {
 
 static void print_binary_as_ascii(vector<bool>& output) {
 	for (int i = 0; i < output.size(); i += 8) {
-		unsigned char c = 0;
-		for (int j = 7; j >= 0; j--)
+		unsigned c = 0;
+		for (int j = 0; j < 8; j++)
 			if (output[i + j]) c |= (1 << j);
-		printf("%02x ", c);
+		printf("%02X ", c);
 	}
 
 	printf("\n");

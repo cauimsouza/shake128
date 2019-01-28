@@ -1,123 +1,182 @@
 #include <vector>
+#include <cstdint>
+#include <algorithm>
 #include <list>
 #include <cassert>
-#include "shake.h"
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
 #include "sponge.h"
+#include "shake.h"
 
 using namespace std;
 
 #define B 1600
-#define W 64  // m = b / 25
+#define W 64  // w = b / 25
 #define L 6 // l = log_2(w)
+#define CAPACITY 256
 
-#define A(x, y, z) s[(W * (5 * (y) + (x)) + (z))]
-#define AP(x, y, z) ap[(W * (5 * (y) + (x)) + (z))]
-#define MOD(a, b) (((a) % (b)) + ((a) < 0 ? (b) : 0))
+bool A[5][5][W];
+bool AP[5][5][W];
+bool C[5][W];
+bool D[5][W];
 
-static vector<bool> c(5 * W);
-static vector<bool> d(5 * W);
-static vector<bool> ap(B);
+static int mod(int a, int b) {
+	int ans = a % b;
+	if (a > 0) return ans;
+	return (ans + b) % b;
+}
 
-static void theta(vector<bool>& s) {
-#define C(x, z) c[(W * (x)) + (z)]
+static void to_state(vector<bool> &s) {
+	for (int x = 0; x < 5; x++)
+		for (int y = 0; y < 5; y++)
+			for (int z = 0; z < W; z++)
+				A[x][y][z] = s[W * (5 * y + x) + z];
+}
+
+static void from_state(vector<bool> &s) {
+	int i = 0;
+	for (int y = 0; y < 5; y++)
+		for (int x = 0; x < 5; x++)
+			for (int z = 0; z < W; z++)
+				s[i++] = A[x][y][z];
+}
+
+void print() {
+	for (int y = 0; y < 5; y++) {
+		for (int x = 0; x < 5; x++) {
+			for (int z = W - 8; z >= 0; z -= 8) {
+					unsigned char byte = 0;
+					for (int j = 0; j < 8; j++) {
+						if (A[x][y][z + j])	byte |= (1 << (j));
+					}
+					printf("%02x", byte);
+			}
+			printf(" ");
+		}
+		printf("\n");
+	}
+}
+
+static void copy_AP_to_A() {
+	for (int x = 0; x < 5; x++)
+		for (int y = 0; y < 5; y++)
+			for (int z = 0; z < W; z++)
+				A[x][y][z] = AP[x][y][z];
+}
+
+static void theta() {
 	for (int x = 0; x < 5; x++)
 		for (int z = 0; z < W; z++)
-			C(x, z) = A(x, 0, z) ^ A(x, 1, z) ^ A(x, 3, z) ^ A(x, 4, z);
+			C[x][z] = A[x][0][z] ^ A[x][1][z] ^ A[x][2][z] ^ A[x][3][z] ^ A[x][4][z];
 
-#define D(x, z) d[(W * (x)) + (z)]
 	for (int x = 0; x < 5; x++)
-		for (int z = 0; z < W; z++)
-			D(x, z) = C(MOD(x - 1, 5), z) ^ C(MOD(x + 1, 5), MOD(z - 1, W));
+		for (int z = 0; z < W; z++) {
+			D[x][z] = C[mod(x - 1 + 5, 5)][z] ^ C[mod(x + 1, 5)][mod(z - 1 + W, W)];
+		}
 
 	for (int x = 0; x < 5; x++)
 		for (int y = 0; y < 5; y++)
 			for (int z = 0; z < W; z++)
-				A(x, y, z) = A(x, y, z) ^ D(x, z);
+				A[x][y][z] = A[x][y][z] ^ D[x][z];
+
+	// printf("After theta:\n"); print();printf("\n");
 }
 
-static void rho(vector<bool>& s) {
+static void rho() {
 	for (int z = 0; z < W; z++)
-		AP(0, 0, z) = A(0, 0, z);
+		AP[0][0][z] = A[0][0][z];
 
 	int x = 1, y = 0;
 	for (int t = 0; t < 24; t++) {
-		for (int z = 0; z < W; z++)
-			AP(x, y, z) = A(x, y, MOD(z - ((t + 1) * (t + 2)) / 2, W));
-		int yp = MOD(2 * x + 3 * y, 5);
+		for (int z = 0; z < W; z++) {
+			AP[x][y][z] = A[x][y][mod(z - ((t + 1) * (t + 2)) / 2 + W, W)];
+		}
+		int yp = mod(2 * x + 3 * y, 5);
 		x = y;
 		y = yp;
 	}
 
-	s.assign(ap.begin(), ap.end());
+	copy_AP_to_A();
+
+	// printf("After rho:\n"); print(); printf("\n");
 }
 
-static void pi(vector<bool>& s) {
+static void pi() {
 	for (int x = 0; x < 5; x++)
 		for (int y = 0; y < 5; y++)
 			for (int z = 0; z < W; z++)
-				AP(x, y, z) = A(MOD(x + 3 * y, 5), x, z);
+				AP[x][y][z] = A[mod(x + 3 * y, 5)][x][z];
 
-	s.assign(ap.begin(), ap.end());
+	copy_AP_to_A();
+
+	// printf("After pi:\n"); print(); printf("\n");
 }
 
-static void chi(vector<bool>& s) {
+static void chi() {
 	for (int x = 0; x < 5; x++)
 		for (int y = 0; y < 5; y++)
 			for (int z = 0; z < W; z++)
-				AP(x, y, z) = A(x, y, z) ^ ((A(MOD(x + 1, 5), y, z) ^ 1) & A(MOD(x + 2, 5), y, z));
+				AP[x][y][z] = A[x][y][z] ^ ((A[mod(x + 1, 5)][y][z] ^ 1) & A[mod(x + 2, 5)][y][z]);
 
-	s.assign(ap.begin(), ap.end());
-}
+	copy_AP_to_A();
 
-static bool rc(int t) {
-	int niter = MOD(t, 255);
-	if (!niter) return true;
+	// printf("After chi:\n"); print(); printf("\n");
+} 
 
-#define R(i) *(r.begin() + (i))
-	list<bool> r{1, 0, 0, 0, 0, 0, 0, 0};
-	for (int i = 0; i < niter; i++) {
-		r.push_front(0);
+static bool rc(int ir) {
+	int loops = mod(ir, 255);
+	if (loops == 0) return 1;
 
-		auto it = r.begin();
-		auto eit = r.rbegin();
-
-		*it = (*it) ^ (*eit);
-
-		it = next(it, 4);
-		*it = (*it) ^ (*eit);
-
-		it = next(it);
-		*it = (*it) ^ (*eit);
-
-		it = next(it);
-		*it = (*it) ^ (*eit);
-
-		r.pop_back();
+	vector<bool> r = {1, 0, 0, 0, 0, 0, 0, 0};
+	for (int i = 0; i < loops; i++) {
+		r.insert(r.begin(), 0);
+		r[0] = r[0] ^ r[8];
+		r[4] = r[4] ^ r[8];
+		r[5] = r[5] ^ r[8];
+		r[6] = r[6] ^ r[8];
+		r.resize(8);
 	}
-	return r.front();
+
+	return r[0];
 }
 
-static void iota(vector<bool>& s, int ir) {
-	vector<bool> RC(W);
-
+static void iota(int ir) {
+	vector<bool> r(W, false);
 	for (int j = 0; j <= L; j++)
-		RC[(1 << j) - 1] = rc(j + 7 * ir);
+		r[(1 << j) - 1] = rc(j + 7 * ir);
 
-	for (int z = 0; z < W; z++)
-		A(0, 0, z) = A(0, 0, z) ^ RC[z];
+	for (int z = 0; z < W; z++) {
+		A[0][0][z] ^= r[z];
+	}
+
+	// printf("After iota:\n"); print(); printf("\n");
 }
 
-static void rnd(vector<bool>& s, int ir) {
-	theta(s);
-	rho(s);
-	pi(s);
-	chi(s);
-	iota(s, ir);
+static void rnd(int ir) {
+	theta();
+	rho();
+	pi();
+	chi();
+	iota(ir);
+}
+
+static void print_binary_as_ascii(vector<bool>& output) {
+	for (int i = 0; i < output.size(); i += 8) {
+		uint64_t c = 0;
+		for (int j = 0; j < 8; j++)
+			if (output[i + j]) c |= (1 << j);
+		printf("%02X ", c);
+	}
+
+	printf("\n");
 }
 
 static void keccak_p(vector<bool>& s, int nr) {
+	to_state(s);
 	for (int ir = 12 + 2 * L - nr; ir <= 12 + 2 * L - 1; ir++)
-		rnd(s, ir);
+		rnd(ir);
+	from_state(s);
 }
 
 static void keccak_f(vector<bool>& s) {
@@ -126,7 +185,11 @@ static void keccak_f(vector<bool>& s) {
 
 static void multi_rate_pad(vector<bool>& s, int r) {
 	int m = s.size();
-	int j = MOD(-m - 2, r);
+	int j = mod(-m - 2, r);
+
+	assert(j >= 0);
+	assert(j + 2 < 2 * r);
+	assert(mod(j + 2 + m, r) == 0);
 
 	vector<bool> pad(j + 2, 0);
 	pad[0] = pad[j + 1] = 1;
@@ -138,11 +201,36 @@ static void multi_rate_pad(vector<bool>& s, int r) {
 	assert(s.size() == j + 2 + m);
 }
 
-Shake128::Shake128() : Sponge(keccak_f, multi_rate_pad, B, 0) {}
+Shake128::Shake128() : Sponge(keccak_f, multi_rate_pad, B, B - CAPACITY) {}
 
 vector<bool> Shake128::xof(const vector<bool>& m, int len) {
-	this->r = B - 2 * len;
 	vector<bool> suffix = {1, 1, 1, 1};
-	suffix.insert(suffix.begin(), m.begin(), m.end());
+	// suffix.insert(suffix.begin(), m.begin(), m.end());
 	return Sponge::xof(suffix, len);
 }
+
+static void test_mod() {
+	assert(mod(5, 3) == 2);
+	assert(mod(3, 3) == 0);
+	assert(mod(1, 3) == 1);
+	assert(mod(7, 3) == 1);
+	assert(mod(8, 3) == 2);
+	assert(mod(0, 3) == 0);
+	assert(mod(-1, 3) == 2);
+	assert(mod(-6, 3) == 0);
+	assert(mod(-8, 3) == 1);
+	assert(mod(-1, 5) == 4);
+	assert(mod(6, 5) == 1);
+	assert(mod(5, 5) == 0);
+	assert(mod(0, 5) == 0);
+}
+
+// int main() {
+// 	test_mod();
+// 	vector<bool> s(B, false);
+// 	keccak_f(s);
+// 	keccak_f(s);
+// 	print_binary_as_ascii(s);
+//
+// 	return 0;
+// }
